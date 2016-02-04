@@ -38,7 +38,8 @@ namespace Decorator {
 		}
 		virtual void what() {
 			std::cout << "Plastic Bag with [";
-			gift -> what();
+			if (gift)
+				gift -> what();
 			std::cout << "]";
 			std::cout << std::endl;
 		}
@@ -64,7 +65,8 @@ namespace Decorator {
 		Box(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Box() {}
 		virtual void what() {
-			wrapper -> what();
+			if (wrapper)
+				wrapper -> what();
 			std::cout << "inside Box";
 			std::cout << std::endl;
 		}
@@ -75,7 +77,8 @@ namespace Decorator {
 		Paper(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Paper() {}
 		virtual void what() {
-			wrapper -> what();
+			if (wrapper)
+				wrapper -> what();
 			std::cout << "wrapped with Paper";
 			std::cout << std::endl;
 		}
@@ -86,7 +89,8 @@ namespace Decorator {
 		Ribbon(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Ribbon() {}
 		virtual void what() {
-			wrapper -> what();
+			if (wrapper)
+				wrapper -> what();
 			std::cout << "tied with Ribbon";
 			std::cout << std::endl;
 		}

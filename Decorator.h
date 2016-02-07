@@ -8,6 +8,7 @@ namespace Decorator {
 	
 	class Gift : public Object {
 	public:
+		virtual ~Gift() {}
 	};
 	
 	class Perfumes : public Gift {
@@ -22,6 +23,7 @@ namespace Decorator {
 	// component
 	class Wrapper : public Object {
 	public:
+		virtual ~Wrapper() {}
 	};
 
 	// concrete component
@@ -47,7 +49,6 @@ namespace Decorator {
 		
 	// decorator
 	class GiftWrapper : public Wrapper {
-	protected:
 		Wrapper *wrapper;
 	public:
 		GiftWrapper(Wrapper *aWrapper = nullptr) {
@@ -58,6 +59,10 @@ namespace Decorator {
 				delete wrapper;
 			wrapper = nullptr;
 		}
+		virtual void what() {
+			if (wrapper)
+				wrapper -> what();
+		}
 	};
 
 	class Box : public GiftWrapper {
@@ -65,8 +70,7 @@ namespace Decorator {
 		Box(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Box() {}
 		virtual void what() {
-			if (wrapper)
-				wrapper -> what();
+			GiftWrapper::what();
 			std::cout << "inside Box";
 			std::cout << std::endl;
 		}
@@ -77,8 +81,7 @@ namespace Decorator {
 		Paper(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Paper() {}
 		virtual void what() {
-			if (wrapper)
-				wrapper -> what();
+			GiftWrapper::what();
 			std::cout << "wrapped with Paper";
 			std::cout << std::endl;
 		}
@@ -89,8 +92,7 @@ namespace Decorator {
 		Ribbon(Wrapper *aWrapper) : GiftWrapper(aWrapper) {}
 		virtual ~Ribbon() {}
 		virtual void what() {
-			if (wrapper)
-				wrapper -> what();
+			GiftWrapper::what();
 			std::cout << "tied with Ribbon";
 			std::cout << std::endl;
 		}

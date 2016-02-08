@@ -38,7 +38,7 @@ namespace Flyweight {
 		}
 	};
 	
-	// abstaract factory
+	// simple factory
 	class BaseImageLoader {
 	public:
 		BaseImageLoader() {}

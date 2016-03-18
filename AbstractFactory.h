@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace AbstractFactory {
 	// platform dependent products
 	class Component {

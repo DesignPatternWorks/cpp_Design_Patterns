@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace Adapter {
 	enum Type {
 		None = 0,

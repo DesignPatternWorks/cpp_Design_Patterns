@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unistd.h>
+#include <string>
 
 namespace Proxy {
 	class Image {

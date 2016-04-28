@@ -74,14 +74,17 @@ namespace State {
 	void New::exit(Process *process) {
 		std::cout << "New -> Terminated" << std::endl;
 		process -> setState(new Terminated());
+		delete this;
 	}
 	void New::addmit(Process *process) {
 		std::cout << "New -> Ready" << std::endl;
 		process -> setState(new Ready());
+		delete this;
 	}
 	void Ready::exit(Process *process) {
 		std::cout << "Ready -> Terminated" << std::endl;
 		process -> setState(new Terminated());
+		delete this;
 	}
 	void Ready::addmit(Process *process) {
 		std::cout << "Already Ready" << std::endl;
@@ -89,14 +92,17 @@ namespace State {
 	void Ready::dispatch(Process *process) {
 		std::cout << "Ready -> Running" << std::endl;
 		process -> setState(new Running());
+		delete this;
 	}
 	void Running::exit(Process *process) {
 		std::cout << "Running -> Terminated" << std::endl;
 		process -> setState(new Terminated());
+		delete this;
 	}
 	void Running::interrupt(Process *process) {
 		std::cout << "Running -> Ready" << std::endl;
 		process -> setState(new Ready());
+		delete this;
 	}
 	void Terminated::exit(Process *process) {
 		std::cout << "Already Terminated" << std::endl;
@@ -116,7 +122,6 @@ namespace State {
 	void Process::setState(ProcessState *aState) {
 		if (!aState)
 			return;
-		delete state;
 		state = aState;
 	}
 	void Process::addmit() {

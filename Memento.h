@@ -4,17 +4,18 @@
 #include <memory>
 #include <vector>
 
-namespace Memento {
-	template <class TMemento>
+namespace Memento_ {
+	// memento API
+	template <class Memento>
 	class MementoAPI {
 	public:
-		virtual std::unique_ptr<TMemento> createMemento() = 0;
-		virtual void reinstate(const std::unique_ptr<TMemento> &pMemento) = 0;
+		virtual std::unique_ptr<Memento> createMemento() = 0;
+		virtual void restoreMemento(const std::unique_ptr<Memento> &pMemento) = 0;
 	};
 
+	// tab memento
 	class Tab;
 	class TabMemento {
-		friend class Tab;
 		const std::string pageName;
 		TabMemento() {	
 		}
@@ -22,7 +23,7 @@ namespace Memento {
 		TabMemento(const std::string &aPageName) : pageName(aPageName) {
 			// std::cout << "Creating memento...[" + pageName + "]" << std::endl;
 		}
-
+		friend class Tab;
 		friend std::ostream &operator<<(std::ostream &os, const TabMemento &tMemento);	
 	};
 	std::ostream &operator<<(std::ostream &os, const TabMemento &tMemento){
@@ -30,6 +31,7 @@ namespace Memento {
 		return os;
 	}
 
+	// tab API
 	class TabAPI {
 	public:
 		virtual void goToPage(const std::string &pageName) = 0;
@@ -42,76 +44,67 @@ namespace Memento {
 		Tab() {
 			goToPage(HOME_PAGA_NAME);
 		}
-
 		virtual void goToPage(const std::string &pageName) {
 			std::cout << "Going to page...[" + pageName + "]" << std::endl;
 			curPageName = pageName;
 		}
-
 		virtual std::unique_ptr<TabMemento> createMemento() {
 			std::unique_ptr<TabMemento> pMemento(new TabMemento(curPageName));
 			return std::move(pMemento);
 		}
-
-		virtual void reinstate(const std::unique_ptr<TabMemento> &pMemento) {
+		virtual void restoreMemento(const std::unique_ptr<TabMemento> &pMemento) {
 			goToPage(pMemento -> pageName);
 		}
 	};
 	const std::string Tab::HOME_PAGA_NAME = "google.com";
 
-	class TabManager : public TabAPI {
-		std::unique_ptr<Tab> tab;
-		std::vector<std::unique_ptr<TabMemento>> undoHistory;
-		std::vector<std::unique_ptr<TabMemento>> redoHistory;
-
-		TabManager() {
+	template <class Memento>
+	class MementoManager {
+		std::vector<std::unique_ptr<Memento>> undoRepo;
+		std::vector<std::unique_ptr<Memento>> redoRepo;
+	protected:
+		std::unique_ptr<MementoAPI<Memento>> pTarget;
+		MementoManager() : pTarget(nullptr) {
 		}
 	public:
-		TabManager(std::unique_ptr<Tab> &pTab) : tab(std::move(pTab)) {
-			std::unique_ptr<TabMemento> pMemento = tab -> createMemento();
-			undoHistory.push_back(std::move(pMemento));
+		MementoManager(std::unique_ptr<MementoAPI<Memento>> ppTarget) : pTarget(std::move(ppTarget)) {
+			save();
 		}
-
-		virtual void goToPage(const std::string &pageName) {
-			redoHistory.clear();
-			tab -> goToPage(pageName);
-
-			std::unique_ptr<TabMemento> pMemento = tab -> createMemento();
-			undoHistory.push_back(std::move(pMemento));
+		virtual ~MementoManager() {
 		}
-		
-		void goBackward() {
-			if (undoHistory.size() <= 1)
+		void save() {
+			redoRepo.clear();
+			std::unique_ptr<Memento> pMemento = pTarget -> createMemento();
+			undoRepo.push_back(std::move(pMemento));
+		}	
+		void undo() {
+			if (undoRepo.size() <= 1)
 				return;
-
-			redoHistory.push_back(std::move(undoHistory.back()));
-			undoHistory.pop_back();
-			tab -> reinstate(undoHistory.back());
+			redoRepo.push_back(std::move(undoRepo.back()));
+			undoRepo.pop_back();
+			pTarget -> restoreMemento(undoRepo.back());
 		}
-
-		void goForward() {
-			if (redoHistory.empty())
+		void redo() {
+			if (redoRepo.empty())
 				return;
-
-			tab -> reinstate(redoHistory.back());
-			undoHistory.push_back(std::move(redoHistory.back()));
-			redoHistory.pop_back();
+			pTarget -> restoreMemento(redoRepo.back());
+			undoRepo.push_back(std::move(redoRepo.back()));
+			redoRepo.pop_back();
 		}
-
-		void showHistory() {
+		void show() {
 			std::cout << std::endl;
 			std::cout << "*** Begin ***" << std::endl; 
 			std::cout << "Undo : " << std::endl;
-			for (int i = 0; i < undoHistory.size(); ++i) {
-				const auto &pMemento = undoHistory[i];
+			for (int i = 0; i < undoRepo.size(); ++i) {
+				const auto &pMemento = undoRepo[i];
 				std::cout << "[" << *pMemento << "]";
-				if (i == undoHistory.size() - 1)
+				if (i == undoRepo.size() - 1)
 					std::cout << "- current";	
 				std::cout << std::endl;
 			}
 			std::cout << "Redo : " << std::endl;
-			for (int i = redoHistory.size() - 1; i >= 0; --i) {
-				const auto &pMemento = redoHistory[i];
+			for (int i = redoRepo.size() - 1; i >= 0; --i) {
+				const auto &pMemento = redoRepo[i];
 				std::cout << "[" << *pMemento << "]";
 				std::cout << std::endl;
 			}
@@ -120,10 +113,36 @@ namespace Memento {
 		}
 	};
 
+	class TabManager : public TabAPI, public MementoManager<TabMemento> {
+		TabManager() : MementoManager<TabMemento>() {
+		}
+	public:
+		TabManager(std::unique_ptr<Tab> ppTab) : MementoManager<TabMemento>(std::move(ppTab)) {
+		}
+		virtual ~TabManager() {
+			std::unique_ptr<Tab> pTab(static_cast<Tab *>(pTarget.release()));
+		}
+		virtual void goToPage(const std::string &pageName) {
+			std::unique_ptr<Tab> pTab(static_cast<Tab *>(pTarget.release()));
+			pTab -> goToPage(pageName);
+			pTarget = std::move(pTab);
+			save();
+		}
+		void goBackward() {
+			undo();
+		}
+		void goForward() {
+			redo();
+		}
+		void showHistory() {
+			show();
+		}
+	};
+
 	void TestSuite() {
 		std::unique_ptr<Tab> pTab(new Tab());
-		TabManager tabManager(pTab);
-		tabManager.goToPage("mail.google.com");
+		TabManager tabManager(std::move(pTab));
+
 		tabManager.goToPage("maps.google.com");
 		tabManager.goToPage("earth.google.com");
 		tabManager.showHistory();

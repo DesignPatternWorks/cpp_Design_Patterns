@@ -4,13 +4,13 @@
 #include <memory>
 #include <vector>
 
-namespace Memento_ {
+namespace Memento {
 	// memento API
-	template <class Memento>
+	template <class State>
 	class MementoAPI {
 	public:
-		virtual std::unique_ptr<Memento> createMemento() = 0;
-		virtual void restoreMemento(const std::unique_ptr<Memento> &pMemento) = 0;
+		virtual std::unique_ptr<State> createMemento() = 0;
+		virtual void restoreMemento(const std::unique_ptr<State> &pMemento) = 0;
 	};
 
 	// tab memento
@@ -58,23 +58,23 @@ namespace Memento_ {
 	};
 	const std::string Tab::HOME_PAGA_NAME = "google.com";
 
-	template <class Memento>
+	template <class State>
 	class MementoManager {
-		std::vector<std::unique_ptr<Memento>> undoRepo;
-		std::vector<std::unique_ptr<Memento>> redoRepo;
+		std::vector<std::unique_ptr<State>> undoRepo;
+		std::vector<std::unique_ptr<State>> redoRepo;
 	protected:
-		std::unique_ptr<MementoAPI<Memento>> pTarget;
+		std::unique_ptr<MementoAPI<State>> pTarget;
 		MementoManager() : pTarget(nullptr) {
 		}
 	public:
-		MementoManager(std::unique_ptr<MementoAPI<Memento>> ppTarget) : pTarget(std::move(ppTarget)) {
+		MementoManager(std::unique_ptr<MementoAPI<State>> ppTarget) : pTarget(std::move(ppTarget)) {
 			save();
 		}
 		virtual ~MementoManager() {
 		}
 		void save() {
 			redoRepo.clear();
-			std::unique_ptr<Memento> pMemento = pTarget -> createMemento();
+			std::unique_ptr<State> pMemento = pTarget -> createMemento();
 			undoRepo.push_back(std::move(pMemento));
 		}	
 		void undo() {

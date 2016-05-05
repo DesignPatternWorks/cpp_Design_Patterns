@@ -238,27 +238,3 @@ namespace Mediator {
 		pChatServer -> postMsg(pMsg3, true);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

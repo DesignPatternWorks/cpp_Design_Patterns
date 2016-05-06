@@ -5,8 +5,10 @@
 
 namespace State {
 	// context
+	class ProcessState;
 	class Process {
-		class ProcessState *state;
+		ProcessState *state;
+		void attempt(void (ProcessState::*change)(Process *));
 	public:
 		Process();
 		~Process();
@@ -74,17 +76,14 @@ namespace State {
 	void New::exit(Process *process) {
 		std::cout << "New -> Terminated" << std::endl;
 		process -> setState(new Terminated());
-		delete this;
 	}
 	void New::addmit(Process *process) {
 		std::cout << "New -> Ready" << std::endl;
 		process -> setState(new Ready());
-		delete this;
 	}
 	void Ready::exit(Process *process) {
 		std::cout << "Ready -> Terminated" << std::endl;
-		process -> setState(new Terminated());
-		delete this;
+		process -> setState(new Terminated());	
 	}
 	void Ready::addmit(Process *process) {
 		std::cout << "Already Ready" << std::endl;
@@ -92,23 +91,26 @@ namespace State {
 	void Ready::dispatch(Process *process) {
 		std::cout << "Ready -> Running" << std::endl;
 		process -> setState(new Running());
-		delete this;
 	}
 	void Running::exit(Process *process) {
 		std::cout << "Running -> Terminated" << std::endl;
 		process -> setState(new Terminated());
-		delete this;
 	}
 	void Running::interrupt(Process *process) {
 		std::cout << "Running -> Ready" << std::endl;
 		process -> setState(new Ready());
-		delete this;
 	}
 	void Terminated::exit(Process *process) {
 		std::cout << "Already Terminated" << std::endl;
 	}
 
 	// context definition
+	void Process::attempt(void (ProcessState::*change)(Process *)) {
+		ProcessState *old = state;
+		((*state).*change)(this);
+		if (old != state)
+			delete old;
+	}
 	Process::Process() {
 		state = new New();
 	}
@@ -125,16 +127,16 @@ namespace State {
 		state = aState;
 	}
 	void Process::addmit() {
-		state -> addmit(this);
+		attempt(&ProcessState::addmit);
 	}
 	void Process::interrupt() {
-		state -> interrupt(this);
+		attempt(&ProcessState::interrupt);
 	}
 	void Process::dispatch() {
-		state -> dispatch(this);
+		attempt(&ProcessState::dispatch);
 	}
 	void Process::exit() {
-		state -> exit(this);
+		attempt(&ProcessState::exit);
 	}
 	
 	void TestSuite() {

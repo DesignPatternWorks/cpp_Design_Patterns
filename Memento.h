@@ -9,6 +9,8 @@ namespace Memento {
 	template <class State>
 	class MementoAPI {
 	public:
+		virtual ~MementoAPI() {
+		}
 		virtual std::unique_ptr<State> createMemento() = 0;
 		virtual void restoreMemento(const std::unique_ptr<State> &pMemento) = 0;
 	};
@@ -34,6 +36,8 @@ namespace Memento {
 	// tab API
 	class TabAPI {
 	public:
+		virtual ~TabAPI() {
+		}
 		virtual void goToPage(const std::string &pageName) = 0;
 	};
 
@@ -43,6 +47,8 @@ namespace Memento {
 	public:
 		Tab() {
 			goToPage(HOME_PAGA_NAME);
+		}
+		virtual ~Tab() {
 		}
 		virtual void goToPage(const std::string &pageName) {
 			std::cout << "Going to page...[" + pageName + "]" << std::endl;
@@ -120,7 +126,9 @@ namespace Memento {
 		TabManager(std::unique_ptr<Tab> ppTab) : MementoManager<TabMemento>(std::move(ppTab)) {
 		}
 		virtual ~TabManager() {
-			std::unique_ptr<Tab> pTab(static_cast<Tab *>(pTarget.release()));
+			// Does delete work with pointers to base class?
+			// Yes, it will work, if and only if the base class destructor is virtual!
+			// std::unique_ptr<Tab> pTab(static_cast<Tab *>(pTarget.release()));
 		}
 		virtual void goToPage(const std::string &pageName) {
 			std::unique_ptr<Tab> pTab(static_cast<Tab *>(pTarget.release()));

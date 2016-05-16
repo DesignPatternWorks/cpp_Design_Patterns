@@ -5,6 +5,40 @@
 #include <vector>
 
 namespace Interpreter {
+	typedef std::vector<const std::string> vcs;
+
+	class Context {
+		std::shared_ptr<const vcs> pText;
+		std::vector<std::pair<int, int>> result;
+	public:
+		Context(std::shared_ptr<const vcs> apText) : pText(apText) {
+		}
+		const vcs &text() const {
+			return *pText;
+		}
+		friend class RegexPattern;
+		friend std::ostream &operator<<(std::ostream &os, const Context &ctx);
+	};
+	std::ostream &operator<<(std::ostream &os, const Context &ctx) {
+		for (auto &p : ctx.result) {
+			int beginIdx = p.first;
+			int endIdx = p.second;
+			if (beginIdx > endIdx - 1)
+				continue;
+
+			std::cout << "[" + std::to_string(beginIdx);
+			if (beginIdx < endIdx - 1)
+				std::cout << ", " + std::to_string(endIdx - 1);
+			std::cout << "] : ";
+
+			std::cout << "[...";
+			for (int idx = beginIdx; idx < endIdx; ++idx)
+				 std::cout << ", " << ctx.text()[idx];
+			std::cout << ", ...]" << std::endl;
+		}
+		return os;
+	}
+
 	// abstract expressions
 	class Expression {
 	public:
@@ -12,7 +46,7 @@ namespace Interpreter {
 		}
 		virtual ~Expression() {
 		}
-		virtual std::vector<int> interpret(std::vector<std::string> &text, int idx) = 0;
+		virtual std::vector<int> interpret(Context &ctx, int idx) = 0;
 	};
 	class TerminalExpression : public Expression {
 	public:
@@ -37,8 +71,8 @@ namespace Interpreter {
 		}
 		virtual ~Literal() {
 		}
-		virtual std::vector<int> interpret(std::vector<std::string> &text, int idx) {
-			if (idx >= text.size() || lit != text[idx])
+		virtual std::vector<int> interpret(Context &ctx, int idx) {
+			if (idx >= ctx.text().size() || lit != ctx.text()[idx])
 				return {};
 			return {idx + 1};
 		}
@@ -72,13 +106,13 @@ namespace Interpreter {
 		}
 		virtual ~And() {
 		}
-		virtual std::vector<int> interpret(std::vector<std::string> &text, int idx) {
+		virtual std::vector<int> interpret(Context &ctx, int idx) {
 			std::vector<int> andMatch;
-			std::vector<int> leftMatch = left -> interpret(text, idx);
+			std::vector<int> leftMatch = left -> interpret(ctx, idx);
 			if (leftMatch.empty()) 
 				return andMatch;
 			for (int iidx : leftMatch) {
-				std::vector<int> rightMatch = right -> interpret(text, iidx);
+				std::vector<int> rightMatch = right -> interpret(ctx, iidx);
 				andMatch.insert(andMatch.end(), rightMatch.begin(), rightMatch.end());
 			}
 			return andMatch;
@@ -90,11 +124,11 @@ namespace Interpreter {
 		}
 		virtual ~Or() {
 		}
-		virtual std::vector<int> interpret(std::vector<std::string> &text, int idx) {
+		virtual std::vector<int> interpret(Context &ctx, int idx) {
 			std::vector<int> orMatch;
-			std::vector<int> leftMatch = left -> interpret(text, idx);
+			std::vector<int> leftMatch = left -> interpret(ctx, idx);
 			orMatch.insert(orMatch.end(), leftMatch.begin(), leftMatch.end());
-			std::vector<int> rightMatch = right -> interpret(text, idx);
+			std::vector<int> rightMatch = right -> interpret(ctx, idx);
 			orMatch.insert(orMatch.end(), rightMatch.begin(), rightMatch.end());
 			return orMatch;
 		}
@@ -105,14 +139,14 @@ namespace Interpreter {
 		}
 		virtual ~ZeroOrMany() {
 		}
-		virtual std::vector<int> interpret(std::vector<std::string> &text, int idx) {
+		virtual std::vector<int> interpret(Context &ctx, int idx) {
 			std::vector<int> zeroOrManyMatch = {idx};
 			std::vector<int> nextMatch = {idx};
 			do {
 				std::vector<int> tmp = nextMatch; 
 				nextMatch.clear();
 				for (int iidx : tmp) {
-					std::vector<int> match = next -> interpret(text, iidx);
+					std::vector<int> match = next -> interpret(ctx, iidx);
 					nextMatch.insert(nextMatch.end(), match.begin(), match.end());
 				}
 				zeroOrManyMatch.insert(zeroOrManyMatch.end(), nextMatch.begin(), nextMatch.end());
@@ -126,9 +160,7 @@ namespace Interpreter {
 		std::unique_ptr<Expression> root;
 	public:
 		RegexPattern(std::string pattern) {
-			// TODO:
-			// parse pattern ...
-
+			// TODO: parse pattern ...
 			// "raining*&((cats&dogs)|cats)*"
 			std::unique_ptr<Expression> lit1(new Literal("raining"));
 			std::unique_ptr<Expression> lit2(new Literal("cats"));
@@ -143,31 +175,23 @@ namespace Interpreter {
 			std::unique_ptr<Expression> and2(new And(zeroOrMany1, zeroOrMany2));
 			root = std::move(and2);
 		}
-		void match(std::vector<std::string> &text) {
+		void match(Context &ctx) {
 			std::vector<int> rootMatch;
-			for (int beginIdx = 0; beginIdx < text.size(); ++beginIdx) {
-				rootMatch = root -> interpret(text, beginIdx);
+			for (int beginIdx = 0; beginIdx < ctx.text().size(); ++beginIdx) {
+				rootMatch = root -> interpret(ctx, beginIdx);
 				for (int endIdx : rootMatch) {
-					if (beginIdx > endIdx - 1)
-						continue;
-
-					std::cout << "[" + std::to_string(beginIdx);
-					if (beginIdx < endIdx - 1)
-						std::cout << ", " + std::to_string(endIdx - 1);
-					std::cout << "] : ";
-
-					std::cout << "[...";
-					for (int idx = beginIdx; idx < endIdx; ++idx)
-						 std::cout << ", " << text[idx];
-					std::cout << ", ...]" << std::endl;
+					ctx.result.push_back({beginIdx, endIdx});
 				}
 			}
 		}
 	};
 
 	void TestSuite() {
-		std::vector<std::string> text =  {"dogs", "texttext", "raining", "texttexttexttext", "raining", "cats", "dogs", "cats", "dogs", "cats", "texttext"};
+		std::shared_ptr<const vcs> pText = std::make_shared<const vcs>(vcs{"dogs", "texttext", "raining", "texttexttexttext", "raining", "cats", "dogs", "cats", "dogs", "cats", "texttext"});
+		Context ctx(pText);
+
 		RegexPattern pattern("");
-		pattern.match(text);
+		pattern.match(ctx);
+		std::cout << ctx;
 	}
 }
